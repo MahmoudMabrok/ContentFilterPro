@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content Filter Pro</title>
+  <link rel="stylesheet" href="popup.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-section">
+        <img src="../../icons/icon32.png" alt="Logo" class="logo">
+        <h1>Content Filter Pro</h1>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="extension-toggle" checked>
+        <span class="slider round"></span>
+      </label>
+    </header>
+
+    <main>
+      <div class="stats-card glass">
+        <div class="stat-item">
+          <span class="stat-value" id="filtered-count">0</span>
+          <span class="stat-label">Posts Filtered Today</span>
+        </div>
+      </div>
+
+      <div class="current-site-info glass">
+        <p>Site: <span id="current-site">Detecting...</span></p>
+      </div>
+
+      <div class="actions">
+        <button id="add-rule-btn" class="btn btn-primary">
+          <span class="icon">+</span> Quick Add Rule
+        </button>
+        <button id="open-options-btn" class="btn btn-secondary">
+          Manage Rules
+        </button>
+      </div>
+    </main>
+
+    <footer>
+      <p>Version 1.1.0</p>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
+</html>

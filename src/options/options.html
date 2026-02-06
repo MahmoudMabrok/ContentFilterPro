@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Filter Pro - Settings</title>
+    <link rel="stylesheet" href="options.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo-section">
+                <img src="../../icons/icon48.png" alt="Logo" class="logo">
+                <h2>Content Filter Pro</h2>
+            </div>
+            <nav>
+                <button class="nav-item active" data-tab="rules">Rules Management</button>
+                <button class="nav-item" data-tab="settings">General Settings</button>
+                <button class="nav-item" data-tab="stats">Statistics</button>
+            </nav>
+            <div class="sidebar-footer">
+                <p>v1.1.0</p>
+            </div>
+        </aside>
+
+        <main class="content">
+            <section id="rules-tab" class="tab-content active">
+                <header class="content-header">
+                    <h1>Rules Management</h1>
+                    <div class="header-actions">
+                        <button id="import-rule-btn" class="btn btn-secondary">+ Import Rule</button>
+                        <button id="add-rule-btn" class="btn btn-primary">+ Create New Rule</button>
+                    </div>
+                </header>
+
+                <div class="rules-list-container glass">
+                    <table class="rules-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Rule Name</th>
+                                <th>Site</th>
+                                <th>Action</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rules-tbody">
+                            <!-- Rules will be injected here -->
+                        </tbody>
+                    </table>
+                    <div id="no-rules-msg" class="empty-state hidden">
+                        <p>No rules created yet. Click "Create New Rule" to get started.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="settings-tab" class="tab-content">
+                <h1>General Settings</h1>
+                <div class="settings-group glass">
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h3>Enable Filtering</h3>
+                            <p>Turn content filtering on or off globally.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="global-enable" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h3>Hide Promoted Content</h3>
+                            <p>Automatically hide all promoted/sponsored posts on LinkedIn and Facebook.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="hide-promoted">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h3>Hide LinkedIn Feed Updates</h3>
+                            <p>Hide posts that appear because a friend liked, shared, or commented on them.</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="hide-feed-updates">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <h2>Maintenance</h2>
+                <div class="settings-group glass">
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h3>Backup & Restore</h3>
+                            <p>Export all your settings and rules to a file, or restore them from a backup.</p>
+                        </div>
+                        <div class="setting-actions">
+                            <button id="export-backup-btn" class="btn btn-secondary">Export Backup</button>
+                            <button id="import-backup-btn" class="btn btn-secondary">Import Backup</button>
+                            <input type="file" id="backup-file-input" accept=".json" class="hidden">
+                            <input type="file" id="rule-file-input" accept=".json" class="hidden">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="stats-tab" class="tab-content">
+                <h1>Statistics</h1>
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <h3>Total Filtered</h3>
+                        <p id="total-filtered-stat">0</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>LinkedIn</h3>
+                        <p id="linkedin-stat">0</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>Facebook</h3>
+                        <p id="facebook-stat">0</p>
+                    </div>
+                    <div class="stat-card glass">
+                        <h3>Reddit</h3>
+                        <p id="reddit-stat">0</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Rule Editor Modal -->
+    <div id="rule-modal" class="modal">
+        <div class="modal-content glass">
+            <header class="modal-header">
+                <h2 id="modal-title">Create New Rule</h2>
+                <button class="close-modal">&times;</button>
+            </header>
+            <form id="rule-form">
+                <input type="hidden" id="rule-id">
+                <div class="form-group">
+                    <label for="rule-name">Rule Name</label>
+                    <input type="text" id="rule-name" placeholder="e.g., Hide Crypto Posts" required>
+                </div>
+                <div class="form-group">
+                    <label for="rule-site">Target Site</label>
+                    <select id="rule-site">
+                        <option value="*">All Sites</option>
+                        <option value="linkedin">LinkedIn</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="reddit">Reddit</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rule-action">Action</label>
+                    <select id="rule-action">
+                        <option value="hide">Hide Post</option>
+                        <option value="highlight">Highlight Post</option>
+                    </select>
+                </div>
+                <div class="conditions-section">
+                    <div class="form-group">
+                        <label for="rule-logic">Condition Logic</label>
+                        <select id="rule-logic">
+                            <option value="AND">Match ALL conditions (AND)</option>
+                            <option value="OR">Match ANY condition (OR)</option>
+                        </select>
+                    </div>
+                    <label>Conditions</label>
+                    <div id="conditions-list">
+                        <!-- Condition rows will be added here -->
+                    </div>
+                    <button type="button" id="add-condition-btn" class="btn btn-secondary btn-sm">+ Add
+                        Condition</button>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary close-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Rule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+
+</html>

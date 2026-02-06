@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# macOS
+.DS_Store
+
+# Build artifacts
+release.zip
+
+# Testing
+coverage/
+
+# Logs
+*.log

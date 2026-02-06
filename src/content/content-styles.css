@@ -1,0 +1,35 @@
+/* Content Filter Styles */
+
+.cf-hidden {
+  display: none !important;
+}
+
+.cf-highlight {
+  border: 2px solid #ff4757 !important;
+  background-color: rgba(255, 71, 87, 0.05) !important;
+  position: relative;
+}
+
+.cf-highlight::before {
+  content: 'Filtered Content';
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #ff4757;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-bottom-left-radius: 4px;
+  z-index: 10;
+}
+
+.cf-dimmed {
+  opacity: 0.3 !important;
+  filter: grayscale(1) !important;
+  transition: opacity 0.3s ease;
+}
+
+.cf-dimmed:hover {
+  opacity: 1 !important;
+  filter: none !important;
+}

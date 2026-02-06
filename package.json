@@ -1,0 +1,31 @@
+{
+    "name": "content-filter-pro",
+    "version": "1.1.1",
+    "description": "Chrome extension for content filtering",
+    "scripts": {
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage",
+        "package": "zip -r release.zip manifest.json src icons"
+    },
+    "devDependencies": {
+        "@types/chrome": "^0.0.268",
+        "jest": "^29.7.0",
+        "jest-environment-jsdom": "^29.7.0"
+    },
+    "jest": {
+        "testEnvironment": "jsdom",
+        "setupFilesAfterEnv": [
+            "<rootDir>/tests/setup.js"
+        ],
+        "testMatch": [
+            "**/tests/**/*.test.js"
+        ],
+        "collectCoverageFrom": [
+            "src/**/*.js",
+            "!src/content/content-script.js",
+            "!src/popup/popup.js",
+            "!src/options/options.js"
+        ]
+    }
+}
