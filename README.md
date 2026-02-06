@@ -1,7 +1,7 @@
 # Content Filter Pro
 
 ![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![License](https://img.shields.io/badge/license-AGPL-green.svg)
 
 **Content Filter Pro** is a high-performance Chrome extension designed to give you full control over your social media feeds. It currently supports **LinkedIn**, **Facebook**, and **Reddit**, allowing you to filter out noise, sponsored content, and irrelevant updates using advanced rules.
 
@@ -18,7 +18,7 @@
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/mahmoud-maghraby/ContentFilterPro.git
+   git clone https://github.com/MahmoudMabrok/ContentFilterPro.git
    ```
 2. Install dependencies:
    ```bash
@@ -46,8 +46,8 @@ This will generate a `release.zip` file in the root directory.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the AGPL License - see the LICENSE file for details.
 
-## 👨‍💻 Author
+## 👨💻 Author
 
-**Mahmoud Maghraby**
+**Mahmoud Mabrok**
