@@ -23,11 +23,16 @@ export class LinkedInAdapter extends BaseAdapter {
                 else if (text.includes('3rd')) connectionDegree = '3rd';
             }
 
+            // LinkedIn specific: Job Title
+            const jobTitleEl = el.querySelector('.update-components-actor__description, .feed-shared-actor__description');
+            const jobTitle = jobTitleEl ? jobTitleEl.textContent.trim() : '';
+
             return {
                 site: this.siteName,
                 author: authorEl ? authorEl.textContent.trim() : '',
                 content: contentEl ? contentEl.textContent.trim() : '',
-                linkedin_connection: connectionDegree
+                linkedin_connection: connectionDegree,
+                linkedin_job_title: jobTitle
             };
         } catch (error) {
             console.error('[LinkedInAdapter] Error extracting post data:', error);

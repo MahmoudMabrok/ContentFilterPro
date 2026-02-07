@@ -2,6 +2,9 @@
  * Tests for Adapters
  */
 
+import { jest } from '@jest/globals';
+import { BaseAdapter } from '../src/adapters/base-adapter.js';
+
 describe('BaseAdapter', () => {
     let BaseAdapter;
 

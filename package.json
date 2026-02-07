@@ -2,8 +2,9 @@
     "name": "content-filter-pro",
     "version": "1.1.1",
     "description": "Chrome extension for content filtering",
+    "type": "module",
     "scripts": {
-        "test": "jest",
+        "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",
         "package": "zip -r release.zip manifest.json src icons"

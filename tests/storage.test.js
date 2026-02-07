@@ -1,6 +1,7 @@
 /**
  * Tests for Storage utilities
  */
+import { jest } from '@jest/globals';
 
 describe('Storage', () => {
     let Storage;

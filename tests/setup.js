@@ -2,6 +2,7 @@
  * Jest setup file
  * Mocks Chrome extension APIs
  */
+import { jest } from '@jest/globals';
 
 // Mock chrome.storage API
 global.chrome = {

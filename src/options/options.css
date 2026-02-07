@@ -413,3 +413,29 @@ h2 {
     font-weight: 800;
     color: var(--primary);
 }
+
+/* Nested Groups */
+.condition-group {
+    border-left: 3px solid var(--primary);
+    padding-left: 15px !important;
+    margin-bottom: 15px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.group-logic {
+    max-width: 150px;
+    font-size: 12px;
+    padding: 6px;
+}
+
+.group-actions {
+    display: flex;
+    gap: 8px;
+}

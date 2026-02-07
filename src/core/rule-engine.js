@@ -19,7 +19,9 @@ export const RuleEngine = {
             // Check if rule applies to this site
             if (rule.site !== '*' && rule.site !== postData.site) continue;
 
-            const matches = this.evaluateConditions(rule.conditions, postData, rule.conditionLogic || 'AND');
+            // Track current rule to avoid circular dependencies
+            const evaluationData = { ...postData, currentRuleId: rule.id };
+            const matches = this.evaluateConditions(rule.conditions, evaluationData, rule.conditionLogic || 'AND', rules);
 
             if (matches) {
                 return rule;
@@ -32,21 +34,37 @@ export const RuleEngine = {
     /**
      * Evaluates rule conditions against post data.
      */
-    evaluateConditions(conditions, postData, logic) {
+    evaluateConditions(conditions, postData, logic, allRules = []) {
         if (!conditions || conditions.length === 0) return false;
 
         if (logic === 'AND') {
-            return conditions.every(condition => this.matchCondition(condition, postData));
+            return conditions.every(condition => this.matchCondition(condition, postData, allRules));
         } else {
-            return conditions.some(condition => this.matchCondition(condition, postData));
+            return conditions.some(condition => this.matchCondition(condition, postData, allRules));
         }
     },
 
     /**
      * Matches a single condition against post data.
      */
-    matchCondition(condition, postData) {
+    matchCondition(condition, postData, allRules = []) {
         const { type, operator, value } = condition;
+
+        // Handle rule composability
+        if (type === 'rule') {
+            const subRule = allRules.find(r => r.id === value || r.name === value);
+            if (!subRule || subRule.id === postData.currentRuleId) return false; // Avoid infinite loops
+
+            // Evaluate sub-rule
+            const matches = this.evaluateConditions(subRule.conditions, postData, subRule.conditionLogic || 'AND', allRules);
+            return matches;
+        }
+
+        // Handle nested groups
+        if (type === 'group') {
+            return this.evaluateConditions(condition.conditions, postData, condition.logic || 'AND', allRules);
+        }
+
         const postValue = postData[type];
 
         if (postValue === undefined || postValue === null) return false;

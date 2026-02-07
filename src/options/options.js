@@ -140,20 +140,87 @@
                 document.getElementById('rule-logic').value = rule.conditionLogic || 'AND';
 
                 conditionsList.innerHTML = '';
-                rule.conditions.forEach(cond => addConditionRow(cond));
+                rule.conditions.forEach(cond => {
+                    if (cond.type === 'group') {
+                        addGroupRow(conditionsList, cond);
+                    } else {
+                        addConditionRow(conditionsList, cond);
+                    }
+                });
             } else {
                 document.getElementById('modal-title').textContent = 'Create New Rule';
                 ruleForm.reset();
                 document.getElementById('rule-id').value = '';
                 document.getElementById('rule-logic').value = 'AND';
                 conditionsList.innerHTML = '';
-                addConditionRow();
+                addConditionRow(conditionsList);
             }
         };
 
-        const addConditionRow = (cond = { type: 'content', operator: 'contains', value: '' }) => {
+        const updateRulesDatalist = async () => {
+            let datalist = document.getElementById('rules-datalist');
+            if (!datalist) {
+                datalist = document.createElement('datalist');
+                datalist.id = 'rules-datalist';
+                document.body.appendChild(datalist);
+            }
+
+            const rules = await Storage.getRules();
+            datalist.innerHTML = '';
+            rules.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.name;
+                datalist.appendChild(opt);
+            });
+        };
+
+        const addGroupRow = (parent, groupData = { logic: 'AND', conditions: [] }) => {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'condition-group glass';
+            groupDiv.dataset.type = 'group';
+
+            groupDiv.innerHTML = `
+                <div class="group-header">
+                    <select class="group-logic glass-select">
+                        <option value="AND" ${groupData.logic === 'AND' ? 'selected' : ''}>Match ALL (AND)</option>
+                        <option value="OR" ${groupData.logic === 'OR' ? 'selected' : ''}>Match ANY (OR)</option>
+                    </select>
+                    <div class="group-actions">
+                        <button type="button" class="btn btn-secondary btn-sm add-cond-to-group">+ Condition</button>
+                        <button type="button" class="btn btn-danger btn-sm remove-group">&times;</button>
+                    </div>
+                </div>
+                <div class="group-conditions-list"></div>
+            `;
+
+            const subConditionsList = groupDiv.querySelector('.group-conditions-list');
+
+            // Add initial conditions if any
+            if (groupData.conditions && groupData.conditions.length > 0) {
+                groupData.conditions.forEach(cond => {
+                    if (cond.type === 'group') {
+                        addGroupRow(subConditionsList, cond);
+                    } else {
+                        addConditionRow(subConditionsList, cond);
+                    }
+                });
+            } else {
+                addConditionRow(subConditionsList);
+            }
+
+            parent.appendChild(groupDiv);
+
+            // Group event listeners
+            groupDiv.querySelector('.add-cond-to-group').addEventListener('click', () => addConditionRow(subConditionsList));
+            groupDiv.querySelector('.remove-group').addEventListener('click', () => groupDiv.remove());
+
+            updateRulesDatalist();
+        };
+
+        const addConditionRow = (parent, cond = { type: 'content', operator: 'contains', value: '' }) => {
             const row = document.createElement('div');
             row.className = 'condition-row';
+            row.dataset.type = 'condition';
             row.innerHTML = `
         <select class="cond-type">
           <option value="author" ${cond.type === 'author' ? 'selected' : ''}>Author</option>
@@ -164,6 +231,7 @@
           <option value="linkedin_feed_update" ${cond.type === 'linkedin_feed_update' ? 'selected' : ''}>LinkedIn Feed Update</option>
           <option value="reddit_subreddit" ${cond.type === 'reddit_subreddit' ? 'selected' : ''}>Reddit Subreddit</option>
           <option value="facebook_sponsored" ${cond.type === 'facebook_sponsored' ? 'selected' : ''}>Facebook Sponsored</option>
+          <option value="rule" ${cond.type === 'rule' ? 'selected' : ''}>Rule (Compose)</option>
         </select>
         <select class="cond-operator">
           <option value="equals" ${cond.operator === 'equals' ? 'selected' : ''}>Equals</option>
@@ -172,15 +240,46 @@
           <option value="ends_with" ${cond.operator === 'ends_with' ? 'selected' : ''}>Ends With</option>
           <option value="matches" ${cond.operator === 'matches' ? 'selected' : ''}>Regex</option>
         </select>
-        <input type="text" class="cond-value" value="${cond.value}" placeholder="Value" required>
+        <input type="text" class="cond-value" value="${cond.value}" placeholder="Value" list="rules-datalist" required>
         <button type="button" class="btn btn-danger btn-sm remove-cond">&times;</button>
       `;
-            conditionsList.appendChild(row);
+            parent.appendChild(row);
+            updateRulesDatalist();
+        };
+
+        const collectConditions = (container) => {
+            const items = Array.from(container.children);
+            return items.map(item => {
+                if (item.classList.contains('condition-group')) {
+                    return {
+                        type: 'group',
+                        logic: item.querySelector('.group-logic').value,
+                        conditions: collectConditions(item.querySelector('.group-conditions-list'))
+                    };
+                } else if (item.classList.contains('condition-row')) {
+                    return {
+                        type: item.querySelector('.cond-type').value,
+                        operator: item.querySelector('.cond-operator').value,
+                        value: item.querySelector('.cond-value').value
+                    };
+                }
+            }).filter(i => i !== undefined);
         };
 
         // Event Listeners
         addRuleBtn.addEventListener('click', () => openModal());
-        addConditionBtn.addEventListener('click', () => addConditionRow());
+        addConditionBtn.addEventListener('click', () => addConditionRow(conditionsList));
+
+        // Add "Add Group" button to modal
+        const addGroupBtn = document.createElement('button');
+        addGroupBtn.type = 'button';
+        addGroupBtn.id = 'add-group-btn';
+        addGroupBtn.className = 'btn btn-secondary btn-sm';
+        addGroupBtn.style.marginLeft = '8px';
+        addGroupBtn.textContent = '+ Add Group';
+        addConditionBtn.parentNode.insertBefore(addGroupBtn, addConditionBtn.nextSibling);
+
+        addGroupBtn.addEventListener('click', () => addGroupRow(conditionsList));
 
         document.querySelectorAll('.close-modal').forEach(btn => {
             btn.addEventListener('click', () => ruleModal.classList.remove('active'));
@@ -200,11 +299,7 @@
             const action = document.getElementById('rule-action').value;
             const conditionLogic = document.getElementById('rule-logic').value;
 
-            const conditions = Array.from(document.querySelectorAll('.condition-row')).map(row => ({
-                type: row.querySelector('.cond-type').value,
-                operator: row.querySelector('.cond-operator').value,
-                value: row.querySelector('.cond-value').value
-            }));
+            const conditions = collectConditions(conditionsList);
 
             const rule = { id, name, site, action, conditions, conditionLogic, enabled: true };
 

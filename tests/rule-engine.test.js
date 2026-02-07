@@ -1,6 +1,7 @@
 /**
  * Tests for Rule Engine
  */
+import { jest } from '@jest/globals';
 
 describe('RuleEngine', () => {
     let RuleEngine, Matchers;

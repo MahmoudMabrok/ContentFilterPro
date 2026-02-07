@@ -10,7 +10,9 @@ export const FilterTypes = {
     LINKEDIN_CONNECTION: 'linkedin_connection',
     LINKEDIN_JOB_TITLE: 'linkedin_job_title',
     REDDIT_SUBREDDIT: 'reddit_subreddit',
-    FACEBOOK_SPONSORED: 'facebook_sponsored'
+    FACEBOOK_SPONSORED: 'facebook_sponsored',
+    RULE: 'rule',
+    GROUP: 'group'
 };
 
 export const Operators = {
