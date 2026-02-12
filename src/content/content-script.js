@@ -22,7 +22,7 @@
     };
 
     const logger = {
-        log: (...args) => { }, // console.log('[ContentFilter]', ...args),
+        log: (...args) => console.log('[ContentFilter]', ...args),
         error: (...args) => console.error('[ContentFilter]', ...args),
         warn: (...args) => console.warn('[ContentFilter]', ...args)
     };
@@ -122,12 +122,20 @@
             const { type, operator, value } = condition;
             const postValue = postData[type];
 
-            if (postValue === undefined || postValue === null) return false;
+            if (postValue === undefined || postValue === null) {
+                logger.log(`[Match] Field "${type}" not found in post data`);
+                return false;
+            }
 
             const matcher = Matchers[operator];
-            if (!matcher) return false;
+            if (!matcher) {
+                logger.warn(`[Match] Unknown operator: ${operator}`);
+                return false;
+            }
 
-            return matcher(String(postValue), String(value));
+            const result = matcher(String(postValue), String(value));
+            logger.log(`[Match] ${type} (${postValue}) ${operator} ${value} => ${result}`);
+            return result;
         }
     };
 
@@ -152,19 +160,134 @@
             throw new Error('extractPostData not implemented');
         }
 
-        hidePost(el) {
-            el.classList.add('cf-hidden');
+        hidePost(el, ruleName = 'Content Filter') {
+            // Check if placeholder already exists
+            const existingPlaceholder = el.previousElementSibling;
+            if (existingPlaceholder && existingPlaceholder.classList.contains('cf-placeholder')) {
+                return; // Already has placeholder
+            }
+
+            // Create placeholder element
+            const placeholder = document.createElement('div');
+            placeholder.className = 'cf-placeholder';
+            placeholder.setAttribute('data-cf-placeholder', 'true');
+            placeholder.setAttribute('data-cf-original-id', el.getAttribute('data-id') || generateId());
+
+            placeholder.innerHTML = `
+                <div class="cf-placeholder-content">
+                    <div class="cf-placeholder-info">
+                        <div class="cf-placeholder-title">Content Filtered</div>
+                        <div class="cf-placeholder-reason">Filtered by: ${this.escapeHtml(ruleName)}</div>
+                    </div>
+                    <button class="cf-reveal-button" data-action="reveal">Show Content</button>
+                </div>
+            `;
+
+            // Insert placeholder before the post
+            el.parentElement.insertBefore(placeholder, el);
+
+            // Hide the original post
+            el.classList.add('cf-collapsed');
             el.setAttribute('data-cf-filtered', 'true');
+
+            // Add click event to reveal button
+            const revealButton = placeholder.querySelector('.cf-reveal-button');
+            revealButton.addEventListener('click', () => {
+                this.revealPost(el, placeholder);
+            });
+        }
+
+        revealPost(el, placeholder) {
+            // Remove placeholder
+            if (placeholder && placeholder.parentElement) {
+                placeholder.remove();
+            }
+
+            // Show the original post
+            el.classList.remove('cf-collapsed');
+            el.setAttribute('data-cf-filtered', 'false');
+            el.setAttribute('data-cf-revealed', 'true'); // Mark as revealed to prevent re-filtering
         }
 
         showPost(el) {
-            el.classList.remove('cf-hidden');
+            // Remove any existing placeholder
+            const existingPlaceholder = el.previousElementSibling;
+            if (existingPlaceholder && existingPlaceholder.classList.contains('cf-placeholder')) {
+                existingPlaceholder.remove();
+            }
+
+            el.classList.remove('cf-hidden', 'cf-collapsed');
             el.setAttribute('data-cf-filtered', 'false');
         }
 
-        highlightPost(el) {
-            el.classList.add('cf-highlight');
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        highlightPost(el, ruleName = 'See First') {
+            this.seeFirst(el, ruleName);
+        }
+
+        seeFirst(el, ruleName = 'See First') {
+            logger.log('[SeeFirst] Starting seeFirst evaluation...');
+            logger.log('[SeeFirst] Element:', el?.tagName, el?.className?.substring(0, 50));
+
+            if (!el) {
+                logger.warn('[SeeFirst] Element is null or undefined, skipping');
+                return;
+            }
+
+            if (el.getAttribute('data-cf-filtered') === 'true') {
+                logger.log('[SeeFirst] Post already filtered, skipping');
+                return;
+            }
+
+            if (el.getAttribute('data-cf-see-first') === 'true') {
+                logger.log('[SeeFirst] Post already marked as see-first, skipping');
+                return;
+            }
+
+            const parent = el.parentElement;
+            logger.log('[SeeFirst] Parent element:', parent?.tagName, parent?.className?.substring(0, 50));
+
+            if (!parent) {
+                logger.warn('[SeeFirst] No parent element found, cannot move post');
+                return;
+            }
+
+            // Check if already at the top
+            const isFirstChild = parent.firstChild === el ||
+                (parent.firstElementChild === el);
+            logger.log('[SeeFirst] Is already first child:', isFirstChild);
+
+            if (!isFirstChild) {
+                logger.log('[SeeFirst] Moving post to top of feed');
+                logger.log('[SeeFirst] Current position: child index', Array.from(parent.children).indexOf(el));
+
+                // Move to top
+                parent.prepend(el);
+
+                logger.log('[SeeFirst] Post moved successfully to position 0');
+            } else {
+                logger.log('[SeeFirst] Post is already at top, just applying styling');
+            }
+
+            // Add banner if not already present
+            if (!el.querySelector('.cf-see-first-banner')) {
+                const banner = document.createElement('div');
+                banner.className = 'cf-see-first-banner';
+                banner.innerHTML = `See First <span class="cf-see-first-banner-rule">• ${this.escapeHtml(ruleName)}</span>`;
+                el.insertBefore(banner, el.firstChild);
+                logger.log('[SeeFirst] Added See First banner with rule:', ruleName);
+            }
+
             el.setAttribute('data-cf-filtered', 'true');
+            el.setAttribute('data-cf-see-first', 'true');
+            el.classList.add('cf-see-first');
+
+            logger.log('[SeeFirst] Completed processing for post');
         }
 
         observeFeed(callback) {
@@ -499,9 +622,15 @@
         const siteCounts = {};
 
         posts.forEach(post => {
-            if (post.hasAttribute('data-cf-filtered')) return;
+            // Skip if already filtered or revealed by user
+            if (post.hasAttribute('data-cf-filtered') || post.hasAttribute('data-cf-revealed')) return;
 
             const postData = currentAdapter.extractPostData(post);
+            logger.log('--- Evaluating Post ---');
+            logger.log('Author:', postData.author);
+            logger.log('Content (first 50 chars):', postData.content?.substring(0, 50));
+            logger.log('Post Data Keys:', Object.keys(postData).join(', '));
+
             const matchingRule = RuleEngine.evaluate(rules, postData);
 
             // Re-introduced: Support both Hide and Highlight actions
@@ -509,10 +638,10 @@
                 const identifier = postData.author || postData.content?.substring(0, 30) || 'Unknown Post';
                 logger.log(`Match: "${matchingRule.name}" on "${identifier}" (Action: ${matchingRule.action || 'hide'})`);
 
-                if (matchingRule.action === 'highlight') {
-                    currentAdapter.highlightPost(post);
+                if (matchingRule.action === 'see_first' || matchingRule.action === 'highlight') {
+                    currentAdapter.seeFirst(post, matchingRule.name);
                 } else {
-                    currentAdapter.hidePost(post);
+                    currentAdapter.hidePost(post, matchingRule.name);
                     const site = postData.site || 'unknown';
                     siteCounts[site] = (siteCounts[site] || 0) + 1;
                     filteredCount++;
@@ -520,14 +649,14 @@
             } else {
                 // Check global "hide" settings
                 if (settings.hidePromoted && (postData.linkedin_promoted === 'true' || postData.facebook_sponsored === 'true')) {
-                    currentAdapter.hidePost(post);
+                    currentAdapter.hidePost(post, 'Promoted Content');
                     const site = postData.site || 'unknown';
                     siteCounts[site] = (siteCounts[site] || 0) + 1;
                     filteredCount++;
                     return;
                 }
                 if (settings.hideFeedUpdates && postData.linkedin_feed_update === 'true') {
-                    currentAdapter.hidePost(post);
+                    currentAdapter.hidePost(post, 'Feed Update');
                     const site = postData.site || 'unknown';
                     siteCounts[site] = (siteCounts[site] || 0) + 1;
                     filteredCount++;
@@ -549,6 +678,10 @@
         posts.forEach(post => {
             currentAdapter.showPost(post);
         });
+
+        // Also remove all placeholders
+        const placeholders = document.querySelectorAll('.cf-placeholder');
+        placeholders.forEach(placeholder => placeholder.remove());
     };
 
     // Start the extension logic

@@ -4,23 +4,129 @@
   display: none !important;
 }
 
-.cf-highlight {
-  border: 2px solid #ff4757 !important;
-  background-color: rgba(255, 71, 87, 0.05) !important;
-  position: relative;
+/* Placeholder for filtered content */
+.cf-placeholder {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  border: 1px solid #d1d9e6;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.cf-highlight::before {
-  content: 'Filtered Content';
-  position: absolute;
-  top: 0;
-  right: 0;
-  background: #ff4757;
+.cf-placeholder-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cf-placeholder-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cf-placeholder-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a5568;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cf-placeholder-title::before {
+  content: '🚫';
+  font-size: 14px;
+}
+
+.cf-placeholder-reason {
+  font-size: 12px;
+  color: #718096;
+}
+
+.cf-reveal-button {
+  background: #4299e1;
   color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-bottom-left-radius: 4px;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(66, 153, 225, 0.3);
+}
+
+.cf-reveal-button:hover {
+  background: #3182ce;
+  box-shadow: 0 2px 6px rgba(66, 153, 225, 0.4);
+  transform: translateY(-1px);
+}
+
+.cf-reveal-button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(66, 153, 225, 0.3);
+}
+
+.cf-collapsed {
+  display: none !important;
+}
+
+.cf-see-first {
+  border: 2px solid #10b981 !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.03) 100%) !important;
+  position: relative;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15) !important;
+}
+
+.cf-see-first-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px 10px 0 0;
+  margin: -2px -2px 0 -2px;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.cf-see-first-banner::before {
+  content: '⭐';
+  font-size: 14px;
+}
+
+.cf-see-first-banner-rule {
+  font-weight: 400;
+  opacity: 0.9;
+  margin-left: 4px;
+}
+
+/* Fallback for posts without banner (legacy) */
+.cf-see-first::before {
+  content: '⭐ See First';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-bottom-left-radius: 8px;
+  border-top-right-radius: 10px;
   z-index: 10;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
 }
 
 .cf-dimmed {

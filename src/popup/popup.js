@@ -40,6 +40,7 @@
         const currentSiteEl = document.getElementById('current-site');
         const addRuleBtn = document.getElementById('add-rule-btn');
         const openOptionsBtn = document.getElementById('open-options-btn');
+        const versionEl = document.getElementById('version');
 
         // Load initial state
         const settings = await Storage.getSettings();
@@ -47,6 +48,10 @@
 
         extensionToggle.checked = settings.enabled;
         filteredCountEl.textContent = stats.filteredCount;
+
+        // Set version from manifest
+        const manifest = chrome.runtime.getManifest();
+        versionEl.textContent = manifest.version;
 
 
 

@@ -116,7 +116,7 @@
             </td>
             <td>${rule.name}</td>
             <td><span class="badge">${rule.site === '*' ? 'All' : rule.site}</span></td>
-            <td>${rule.action || 'hide'}</td>
+            <td>${rule.action === 'see_first' ? 'See First' : (rule.action || 'hide')}</td>
             <td>
               <button class="btn btn-secondary btn-sm edit-rule" data-id="${rule.id}">Edit</button>
               <button class="btn btn-secondary btn-sm share-rule" data-id="${rule.id}">Share</button>

@@ -40,10 +40,23 @@ export class BaseAdapter {
     }
 
     /**
-     * Highlights a post element.
+     * Reorders a post to be seen first.
+     */
+    seeFirst(el) {
+        if (!el || el.getAttribute('data-cf-filtered') === 'true') return;
+        const parent = el.parentElement;
+        if (parent && parent.firstChild !== el) {
+            parent.prepend(el);
+        }
+        el.setAttribute('data-cf-filtered', 'true');
+        el.classList.add('cf-see-first');
+    }
+
+    /**
+     * Highlights a post element (Legacy, now maps to seeFirst).
      */
     highlightPost(el) {
-        el.classList.add('cf-highlight');
+        this.seeFirst(el);
     }
 
     /**
