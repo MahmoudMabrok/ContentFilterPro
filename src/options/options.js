@@ -236,8 +236,11 @@
         <select class="cond-operator">
           <option value="equals" ${cond.operator === 'equals' ? 'selected' : ''}>Equals</option>
           <option value="contains" ${cond.operator === 'contains' ? 'selected' : ''}>Contains</option>
+          <option value="contains_exactly" ${cond.operator === 'contains_exactly' ? 'selected' : ''}>Contains (Exact Case)</option>
           <option value="starts_with" ${cond.operator === 'starts_with' ? 'selected' : ''}>Starts With</option>
+          <option value="starts_with_exactly" ${cond.operator === 'starts_with_exactly' ? 'selected' : ''}>Starts With (Exact Case)</option>
           <option value="ends_with" ${cond.operator === 'ends_with' ? 'selected' : ''}>Ends With</option>
+          <option value="ends_with_exactly" ${cond.operator === 'ends_with_exactly' ? 'selected' : ''}>Ends With (Exact Case)</option>
           <option value="matches" ${cond.operator === 'matches' ? 'selected' : ''}>Regex</option>
         </select>
         <input type="text" class="cond-value" value="${cond.value}" placeholder="Value" list="rules-datalist" required>
@@ -393,7 +396,7 @@
             const settings = await Storage.getSettings();
             const stats = await Storage.getStats();
             const backup = {
-                version: '1.1.0',
+                version: '1.2.1',
                 timestamp: new Date().toISOString(),
                 [STORAGE_KEYS.RULES]: rules,
                 [STORAGE_KEYS.SETTINGS]: settings,

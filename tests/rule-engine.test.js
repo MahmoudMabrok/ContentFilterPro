@@ -225,5 +225,170 @@ describe('RuleEngine', () => {
             expect(RuleEngine.matchCondition(condition, postData)).toBe(false);
         });
     });
+
+    describe('starts_with operator on author', () => {
+        test('should match author starting with "A"', () => {
+            const rules = [{
+                id: '1',
+                name: 'Authors starting with A',
+                enabled: true,
+                site: '*',
+                action: 'hide',
+                conditions: [{ type: 'author', operator: 'starts_with', value: 'A' }],
+                conditionLogic: 'AND'
+            }];
+            const postData = { site: 'linkedin', author: 'Ahmed Mahmoud' };
+            const result = RuleEngine.evaluate(rules, postData);
+            expect(result).not.toBeNull();
+            expect(result.id).toBe('1');
+        });
+
+        test('should not match author not starting with "A"', () => {
+            const rules = [{
+                id: '1',
+                name: 'Authors starting with A',
+                enabled: true,
+                site: '*',
+                action: 'hide',
+                conditions: [{ type: 'author', operator: 'starts_with', value: 'A' }],
+                conditionLogic: 'AND'
+            }];
+            const postData = { site: 'linkedin', author: 'Bob Smith' };
+            expect(RuleEngine.evaluate(rules, postData)).toBeNull();
+        });
+
+        test('should be case-insensitive', () => {
+            const rules = [{
+                id: '1',
+                name: 'Authors starting with A',
+                enabled: true,
+                site: '*',
+                action: 'hide',
+                conditions: [{ type: 'author', operator: 'starts_with', value: 'a' }],
+                conditionLogic: 'AND'
+            }];
+            const postData = { site: 'linkedin', author: 'AHMED' };
+            const result = RuleEngine.evaluate(rules, postData);
+            expect(result).not.toBeNull();
+        });
+    });
+
+    describe('Action dispatch (hide vs see_first)', () => {
+        test('should return rule with hide action', () => {
+            const rules = [{
+                id: '1',
+                name: 'Hide crypto',
+                enabled: true,
+                site: '*',
+                action: 'hide',
+                conditions: [{ type: 'content', operator: 'contains', value: 'crypto' }],
+                conditionLogic: 'AND'
+            }];
+            const postData = { site: 'linkedin', content: 'Buy crypto now!' };
+            const result = RuleEngine.evaluate(rules, postData);
+            expect(result).not.toBeNull();
+            expect(result.action).toBe('hide');
+        });
+
+        test('should return rule with see_first action', () => {
+            const rules = [{
+                id: '1',
+                name: 'See First AI',
+                enabled: true,
+                site: '*',
+                action: 'see_first',
+                conditions: [{ type: 'content', operator: 'contains', value: 'AI' }],
+                conditionLogic: 'AND'
+            }];
+            const postData = { site: 'linkedin', content: 'New AI breakthrough' };
+            const result = RuleEngine.evaluate(rules, postData);
+            expect(result).not.toBeNull();
+            expect(result.action).toBe('see_first');
+        });
+
+        test('should return first matching rule regardless of action type', () => {
+            const rules = [
+                {
+                    id: '1',
+                    name: 'See First for A authors',
+                    enabled: true,
+                    site: '*',
+                    action: 'see_first',
+                    conditions: [{ type: 'author', operator: 'starts_with', value: 'A' }],
+                    conditionLogic: 'AND'
+                },
+                {
+                    id: '2',
+                    name: 'Hide A authors',
+                    enabled: true,
+                    site: '*',
+                    action: 'hide',
+                    conditions: [{ type: 'author', operator: 'starts_with', value: 'A' }],
+                    conditionLogic: 'AND'
+                }
+            ];
+            const postData = { site: 'linkedin', author: 'Ahmed' };
+            const result = RuleEngine.evaluate(rules, postData);
+            expect(result).not.toBeNull();
+            expect(result.id).toBe('1');
+            expect(result.action).toBe('see_first');
+        });
+
+        test('hide rule should match when see_first rule does not', () => {
+            const rules = [
+                {
+                    id: '1',
+                    name: 'See First for A authors',
+                    enabled: true,
+                    site: '*',
+                    action: 'see_first',
+                    conditions: [{ type: 'author', operator: 'starts_with', value: 'A' }],
+                    conditionLogic: 'AND'
+                },
+                {
+                    id: '2',
+                    name: 'Hide crypto',
+                    enabled: true,
+                    site: '*',
+                    action: 'hide',
+                    conditions: [{ type: 'content', operator: 'contains', value: 'crypto' }],
+                    conditionLogic: 'AND'
+                }
+            ];
+            const postData = { site: 'linkedin', author: 'Bob', content: 'Buy crypto now!' };
+            const result = RuleEngine.evaluate(rules, postData);
+            expect(result).not.toBeNull();
+            expect(result.id).toBe('2');
+            expect(result.action).toBe('hide');
+        });
+    });
+
+    describe('data-cf-filtered attribute check logic', () => {
+        test('getAttribute returns "true" for filtered posts', () => {
+            const el = document.createElement('div');
+            el.setAttribute('data-cf-filtered', 'true');
+            expect(el.getAttribute('data-cf-filtered') === 'true').toBe(true);
+        });
+
+        test('getAttribute returns "false" for shown posts (should NOT skip)', () => {
+            const el = document.createElement('div');
+            el.setAttribute('data-cf-filtered', 'false');
+            // This is the fixed behavior: getAttribute === 'true' is false, so post is NOT skipped
+            expect(el.getAttribute('data-cf-filtered') === 'true').toBe(false);
+        });
+
+        test('hasAttribute returns true even when value is "false" (the old bug)', () => {
+            const el = document.createElement('div');
+            el.setAttribute('data-cf-filtered', 'false');
+            // Demonstrates the old bug: hasAttribute is true even for "false" value
+            expect(el.hasAttribute('data-cf-filtered')).toBe(true);
+        });
+
+        test('getAttribute returns null for posts without the attribute', () => {
+            const el = document.createElement('div');
+            expect(el.getAttribute('data-cf-filtered') === 'true').toBe(false);
+        });
+    });
 });
+
 

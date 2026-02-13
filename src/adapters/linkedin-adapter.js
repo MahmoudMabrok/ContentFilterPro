@@ -10,7 +10,15 @@ export class LinkedInAdapter extends BaseAdapter {
 
     extractPostData(el) {
         try {
-            const authorEl = el.querySelector('.update-components-actor__name, .feed-shared-actor__name');
+            const authorEl =
+                el.querySelector(
+                    '.update-components-actor__title .hoverable-link-text span[dir="ltr"] span[aria-hidden="true"]'
+                ) ||
+                el.querySelector('.update-components-actor__name') ||
+                el.querySelector('.feed-shared-actor__name');
+
+            console.log('authorEl', authorEl);
+
             const contentEl = el.querySelector('.feed-shared-update-v2__description, .update-components-text');
 
             // LinkedIn specific: Connection degree

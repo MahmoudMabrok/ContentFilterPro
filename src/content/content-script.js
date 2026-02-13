@@ -73,11 +73,14 @@
         CONTAINS: 'contains',
         STARTS_WITH: 'starts_with',
         ENDS_WITH: 'ends_with',
-        MATCHES: 'matches'
+        MATCHES: 'matches',
+        CONTAINS_EXACTLY: 'contains_exactly',
+        STARTS_WITH_EXACTLY: 'starts_with_exactly',
+        ENDS_WITH_EXACTLY: 'ends_with_exactly'
     };
 
     const Matchers = {
-        [Operators.EQUALS]: (val, target) => val.toLowerCase() === target.toLowerCase(),
+        [Operators.EQUALS]: (val, target) => val === target,
         [Operators.CONTAINS]: (val, target) => val.toLowerCase().includes(target.toLowerCase()),
         [Operators.STARTS_WITH]: (val, target) => val.toLowerCase().startsWith(target.toLowerCase()),
         [Operators.ENDS_WITH]: (val, target) => val.toLowerCase().endsWith(target.toLowerCase()),
@@ -88,7 +91,10 @@
             } catch (e) {
                 return false;
             }
-        }
+        },
+        [Operators.CONTAINS_EXACTLY]: (val, target) => val.includes(target),
+        [Operators.STARTS_WITH_EXACTLY]: (val, target) => val.startsWith(target),
+        [Operators.ENDS_WITH_EXACTLY]: (val, target) => val.endsWith(target)
     };
 
     // ============================================================================
@@ -96,15 +102,32 @@
     // ============================================================================
     const RuleEngine = {
         evaluate(rules, postData) {
-            if (!rules || !Array.isArray(rules)) return null;
+            if (!rules || !Array.isArray(rules)) {
+                logger.log('[RuleEngine] No rules provided or invalid rules array');
+                return null;
+            }
+
+            logger.log(`[RuleEngine] Evaluating ${rules.length} rules against post by "${postData.author || 'unknown'}"`);
 
             for (const rule of rules) {
-                if (!rule.enabled) continue;
-                if (rule.site !== '*' && rule.site !== postData.site) continue;
+                if (!rule.enabled) {
+                    logger.log(`[RuleEngine] Rule "${rule.name}" (${rule.id}) is disabled, skipping`);
+                    continue;
+                }
+                if (rule.site !== '*' && rule.site !== postData.site) {
+                    logger.log(`[RuleEngine] Rule "${rule.name}" (${rule.id}) site "${rule.site}" doesn't match post site "${postData.site}", skipping`);
+                    continue;
+                }
 
                 const matches = this.evaluateConditions(rule.conditions, postData, rule.conditionLogic || 'AND');
-                if (matches) return rule;
+                if (matches) {
+                    logger.log(`[RuleEngine] ✅ Rule "${rule.name}" (${rule.id}) MATCHED — action: ${rule.action || 'hide'}`);
+                    return rule;
+                } else {
+                    logger.log(`[RuleEngine] Rule "${rule.name}" (${rule.id}) did not match`);
+                }
             }
+            logger.log('[RuleEngine] No rules matched for this post');
             return null;
         },
 
@@ -122,8 +145,9 @@
             const { type, operator, value } = condition;
             const postValue = postData[type];
 
-            if (postValue === undefined || postValue === null) {
-                logger.log(`[Match] Field "${type}" not found in post data`);
+            // Skip validation if the field is empty (null, undefined, or empty string)
+            if (postValue === undefined || postValue === null || postValue === '') {
+                // logger.log(`[Match] Field "${type}" is empty, skipping validation`);
                 return false;
             }
 
@@ -337,7 +361,12 @@
         extractPostData(el) {
             try {
                 // Get the main author (could be the person who shared/liked)
-                const authorEl = el.querySelector('.update-components-actor__name, .feed-shared-actor__name');
+                // Primary: target the visible author name span inside the actor title link
+                const authorEl = el.querySelector('.update-components-actor__title .hoverable-link-text span[dir="ltr"] span[aria-hidden="true"]')
+                    || el.querySelector('.update-components-actor__name')
+                    || el.querySelector('.feed-shared-actor__name');
+                console.log('authorEl', authorEl);
+
                 const contentEl = el.querySelector('.feed-shared-update-v2__description, .update-components-text');
 
                 // Check for connection degree - look in multiple places
@@ -619,11 +648,17 @@
 
         const posts = document.querySelectorAll(currentAdapter.getPostSelector());
         let filteredCount = 0;
+        let seeFirstCount = 0;
         const siteCounts = {};
 
+        logger.log(`[applyFilters] Processing ${posts.length} posts with ${rules.length} rules`);
+
         posts.forEach(post => {
-            // Skip if already filtered or revealed by user
-            if (post.hasAttribute('data-cf-filtered') || post.hasAttribute('data-cf-revealed')) return;
+            // Skip if already successfully filtered (hidden or see-first) or revealed by user
+            if (post.getAttribute('data-cf-filtered') === 'true' || post.hasAttribute('data-cf-revealed')) {
+                logger.log('[applyFilters] Skipping already-processed post (data-cf-filtered="true" or revealed)');
+                return;
+            }
 
             const postData = currentAdapter.extractPostData(post);
             logger.log('--- Evaluating Post ---');
@@ -633,14 +668,16 @@
 
             const matchingRule = RuleEngine.evaluate(rules, postData);
 
-            // Re-introduced: Support both Hide and Highlight actions
             if (matchingRule) {
                 const identifier = postData.author || postData.content?.substring(0, 30) || 'Unknown Post';
-                logger.log(`Match: "${matchingRule.name}" on "${identifier}" (Action: ${matchingRule.action || 'hide'})`);
+                logger.log(`[applyFilters] Match: "${matchingRule.name}" on "${identifier}" (Action: ${matchingRule.action || 'hide'})`);
 
                 if (matchingRule.action === 'see_first' || matchingRule.action === 'highlight') {
+                    logger.log(`[applyFilters] Applying SEE FIRST for post by "${identifier}"`);
                     currentAdapter.seeFirst(post, matchingRule.name);
+                    seeFirstCount++;
                 } else {
+                    logger.log(`[applyFilters] Applying HIDE for post by "${identifier}"`);
                     currentAdapter.hidePost(post, matchingRule.name);
                     const site = postData.site || 'unknown';
                     siteCounts[site] = (siteCounts[site] || 0) + 1;
@@ -662,12 +699,11 @@
                     filteredCount++;
                     return;
                 }
-                currentAdapter.showPost(post);
             }
         });
 
+        logger.log(`[applyFilters] Summary: ${filteredCount} hidden, ${seeFirstCount} see-first`);
         if (filteredCount > 0) {
-            logger.log(`Filtered ${filteredCount} posts`);
             Storage.updateStats(siteCounts);
         }
     };
