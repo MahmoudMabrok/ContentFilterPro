@@ -22,7 +22,7 @@
     };
 
     const logger = {
-        log: (...args) => { }, // console.log('[ContentFilter]', ...args),
+        log: (...args) => console.log('[ContentFilter]', ...args),
         error: (...args) => console.error('[ContentFilter]', ...args),
         warn: (...args) => console.warn('[ContentFilter]', ...args)
     };
@@ -73,11 +73,16 @@
         CONTAINS: 'contains',
         STARTS_WITH: 'starts_with',
         ENDS_WITH: 'ends_with',
-        MATCHES: 'matches'
+        MATCHES: 'matches',
+        CONTAINS_EXACTLY: 'contains_exactly',
+        STARTS_WITH_EXACTLY: 'starts_with_exactly',
+        ENDS_WITH_EXACTLY: 'ends_with_exactly',
+        NOT_EQUAL: 'not_equal',
+        NOT_CONTAINS: 'not_contains'
     };
 
     const Matchers = {
-        [Operators.EQUALS]: (val, target) => val.toLowerCase() === target.toLowerCase(),
+        [Operators.EQUALS]: (val, target) => val === target,
         [Operators.CONTAINS]: (val, target) => val.toLowerCase().includes(target.toLowerCase()),
         [Operators.STARTS_WITH]: (val, target) => val.toLowerCase().startsWith(target.toLowerCase()),
         [Operators.ENDS_WITH]: (val, target) => val.toLowerCase().endsWith(target.toLowerCase()),
@@ -88,7 +93,12 @@
             } catch (e) {
                 return false;
             }
-        }
+        },
+        [Operators.CONTAINS_EXACTLY]: (val, target) => val.includes(target),
+        [Operators.STARTS_WITH_EXACTLY]: (val, target) => val.startsWith(target),
+        [Operators.ENDS_WITH_EXACTLY]: (val, target) => val.endsWith(target),
+        [Operators.NOT_EQUAL]: (val, target) => val.toLowerCase() !== target.toLowerCase(),
+        [Operators.NOT_CONTAINS]: (val, target) => !val.toLowerCase().includes(target.toLowerCase())
     };
 
     // ============================================================================
@@ -96,15 +106,32 @@
     // ============================================================================
     const RuleEngine = {
         evaluate(rules, postData) {
-            if (!rules || !Array.isArray(rules)) return null;
+            if (!rules || !Array.isArray(rules)) {
+                logger.log('[RuleEngine] No rules provided or invalid rules array');
+                return null;
+            }
+
+            logger.log(`[RuleEngine] Evaluating ${rules.length} rules against post by "${postData.author || 'unknown'}"`);
 
             for (const rule of rules) {
-                if (!rule.enabled) continue;
-                if (rule.site !== '*' && rule.site !== postData.site) continue;
+                if (!rule.enabled) {
+                    logger.log(`[RuleEngine] Rule "${rule.name}" (${rule.id}) is disabled, skipping`);
+                    continue;
+                }
+                if (rule.site !== '*' && rule.site !== postData.site) {
+                    logger.log(`[RuleEngine] Rule "${rule.name}" (${rule.id}) site "${rule.site}" doesn't match post site "${postData.site}", skipping`);
+                    continue;
+                }
 
                 const matches = this.evaluateConditions(rule.conditions, postData, rule.conditionLogic || 'AND');
-                if (matches) return rule;
+                if (matches) {
+                    logger.log(`[RuleEngine] ✅ Rule "${rule.name}" (${rule.id}) MATCHED — action: ${rule.action || 'hide'}`);
+                    return rule;
+                } else {
+                    logger.log(`[RuleEngine] Rule "${rule.name}" (${rule.id}) did not match`);
+                }
             }
+            logger.log('[RuleEngine] No rules matched for this post');
             return null;
         },
 
@@ -122,12 +149,21 @@
             const { type, operator, value } = condition;
             const postValue = postData[type];
 
-            if (postValue === undefined || postValue === null) return false;
+            // Skip validation if the field is empty (null, undefined, or empty string)
+            if (postValue === undefined || postValue === null || postValue === '') {
+                // logger.log(`[Match] Field "${type}" is empty, skipping validation`);
+                return false;
+            }
 
             const matcher = Matchers[operator];
-            if (!matcher) return false;
+            if (!matcher) {
+                logger.warn(`[Match] Unknown operator: ${operator}`);
+                return false;
+            }
 
-            return matcher(String(postValue), String(value));
+            const result = matcher(String(postValue), String(value));
+            logger.log(`[Match] ${type} (${postValue}) ${operator} ${value} => ${result}`);
+            return result;
         }
     };
 
@@ -152,19 +188,118 @@
             throw new Error('extractPostData not implemented');
         }
 
-        hidePost(el) {
-            el.classList.add('cf-hidden');
+        hidePost(el, ruleName = 'Content Filter') {
+            // Check if placeholder already exists
+            const existingPlaceholder = el.previousElementSibling;
+            if (existingPlaceholder && existingPlaceholder.classList.contains('cf-placeholder')) {
+                return; // Already has placeholder
+            }
+
+            // Create placeholder element
+            const placeholder = document.createElement('div');
+            placeholder.className = 'cf-placeholder';
+            placeholder.setAttribute('data-cf-placeholder', 'true');
+            placeholder.setAttribute('data-cf-original-id', el.getAttribute('data-id') || generateId());
+
+            placeholder.innerHTML = `
+                <div class="cf-placeholder-content">
+                    <div class="cf-placeholder-info">
+                        <div class="cf-placeholder-title">Content Filtered</div>
+                        <div class="cf-placeholder-reason">Filtered by: ${this.escapeHtml(ruleName)}</div>
+                    </div>
+                    <button class="cf-reveal-button" data-action="reveal">Show Content</button>
+                </div>
+            `;
+
+            // Insert placeholder before the post
+            el.parentElement.insertBefore(placeholder, el);
+
+            // Hide the original post
+            el.classList.add('cf-collapsed');
             el.setAttribute('data-cf-filtered', 'true');
+
+            // Add click event to reveal button
+            const revealButton = placeholder.querySelector('.cf-reveal-button');
+            revealButton.addEventListener('click', () => {
+                this.revealPost(el, placeholder);
+            });
+        }
+
+        revealPost(el, placeholder) {
+            // Remove placeholder
+            if (placeholder && placeholder.parentElement) {
+                placeholder.remove();
+            }
+
+            // Show the original post
+            el.classList.remove('cf-collapsed');
+            el.setAttribute('data-cf-filtered', 'false');
+            el.setAttribute('data-cf-revealed', 'true'); // Mark as revealed to prevent re-filtering
         }
 
         showPost(el) {
-            el.classList.remove('cf-hidden');
+            // Remove any existing placeholder
+            const existingPlaceholder = el.previousElementSibling;
+            if (existingPlaceholder && existingPlaceholder.classList.contains('cf-placeholder')) {
+                existingPlaceholder.remove();
+            }
+
+            el.classList.remove('cf-hidden', 'cf-collapsed');
             el.setAttribute('data-cf-filtered', 'false');
         }
 
-        highlightPost(el) {
-            el.classList.add('cf-highlight');
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        highlightPost(el, ruleName = 'Highlight') {
+            this.highlight(el, ruleName);
+        }
+
+        highlight(el, ruleName = 'Highlight') {
+            logger.log('[Highlight] Starting highlight evaluation...');
+            logger.log('[Highlight] Element:', el?.tagName, el?.className?.substring(0, 50));
+
+            if (!el) {
+                logger.warn('[Highlight] Element is null or undefined, skipping');
+                return;
+            }
+
+            if (el.getAttribute('data-cf-filtered') === 'true') {
+                logger.log('[Highlight] Post already filtered, skipping');
+                return;
+            }
+
+            if (el.getAttribute('data-cf-highlight') === 'true') {
+                logger.log('[Highlight] Post already marked as highlight, skipping');
+                return;
+            }
+
+            const parent = el.parentElement;
+            logger.log('[Highlight] Parent element:', parent?.tagName, parent?.className?.substring(0, 50));
+
+            if (!parent) {
+                logger.warn('[Highlight] No parent element found, cannot move post');
+                return;
+            }
+
+            // Add banner if not already present
+            if (!el.querySelector('.cf-highlight-banner')) {
+                const banner = document.createElement('div');
+                banner.className = 'cf-highlight-banner';
+                banner.innerHTML = `<span class="cf-highlight-banner-text">Highlight</span><span class="cf-highlight-banner-rule">• ${this.escapeHtml(ruleName)}</span>`;
+                // Insert at top, pushing content down
+                el.insertBefore(banner, el.firstChild);
+                logger.log('[Highlight] Added Highlight banner with rule:', ruleName);
+            }
+
             el.setAttribute('data-cf-filtered', 'true');
+            el.setAttribute('data-cf-highlight', 'true');
+            el.classList.add('cf-highlight');
+
+            logger.log('[Highlight] Completed processing for post');
         }
 
         observeFeed(callback) {
@@ -214,7 +349,12 @@
         extractPostData(el) {
             try {
                 // Get the main author (could be the person who shared/liked)
-                const authorEl = el.querySelector('.update-components-actor__name, .feed-shared-actor__name');
+                // Primary: target the visible author name span inside the actor title link
+                const authorEl = el.querySelector('.update-components-actor__title .hoverable-link-text span[dir="ltr"] span[aria-hidden="true"]')
+                    || el.querySelector('.update-components-actor__name')
+                    || el.querySelector('.feed-shared-actor__name');
+                console.log('authorEl', authorEl);
+
                 const contentEl = el.querySelector('.feed-shared-update-v2__description, .update-components-text');
 
                 // Check for connection degree - look in multiple places
@@ -496,23 +636,37 @@
 
         const posts = document.querySelectorAll(currentAdapter.getPostSelector());
         let filteredCount = 0;
+        let highlightCount = 0;
         const siteCounts = {};
 
+        logger.log(`[applyFilters] Processing ${posts.length} posts with ${rules.length} rules`);
+
         posts.forEach(post => {
-            if (post.hasAttribute('data-cf-filtered')) return;
+            // Skip if already successfully filtered (hidden or highlighted) or revealed by user
+            if (post.getAttribute('data-cf-filtered') === 'true' || post.hasAttribute('data-cf-revealed')) {
+                logger.log('[applyFilters] Skipping already-processed post (data-cf-filtered="true" or revealed)');
+                return;
+            }
 
             const postData = currentAdapter.extractPostData(post);
+            logger.log('--- Evaluating Post ---');
+            logger.log('Author:', postData.author);
+            logger.log('Content (first 50 chars):', postData.content?.substring(0, 50));
+            logger.log('Post Data Keys:', Object.keys(postData).join(', '));
+
             const matchingRule = RuleEngine.evaluate(rules, postData);
 
-            // Re-introduced: Support both Hide and Highlight actions
             if (matchingRule) {
                 const identifier = postData.author || postData.content?.substring(0, 30) || 'Unknown Post';
-                logger.log(`Match: "${matchingRule.name}" on "${identifier}" (Action: ${matchingRule.action || 'hide'})`);
+                logger.log(`[applyFilters] Match: "${matchingRule.name}" on "${identifier}" (Action: ${matchingRule.action || 'hide'})`);
 
-                if (matchingRule.action === 'highlight') {
-                    currentAdapter.highlightPost(post);
+                if (matchingRule.action === 'see_first' || matchingRule.action === 'highlight') {
+                    logger.log(`[applyFilters] Applying HIGHLIGHT for post by "${identifier}"`);
+                    currentAdapter.highlight(post, matchingRule.name);
+                    highlightCount++;
                 } else {
-                    currentAdapter.hidePost(post);
+                    logger.log(`[applyFilters] Applying HIDE for post by "${identifier}"`);
+                    currentAdapter.hidePost(post, matchingRule.name);
                     const site = postData.site || 'unknown';
                     siteCounts[site] = (siteCounts[site] || 0) + 1;
                     filteredCount++;
@@ -520,25 +674,24 @@
             } else {
                 // Check global "hide" settings
                 if (settings.hidePromoted && (postData.linkedin_promoted === 'true' || postData.facebook_sponsored === 'true')) {
-                    currentAdapter.hidePost(post);
+                    currentAdapter.hidePost(post, 'Promoted Content');
                     const site = postData.site || 'unknown';
                     siteCounts[site] = (siteCounts[site] || 0) + 1;
                     filteredCount++;
                     return;
                 }
                 if (settings.hideFeedUpdates && postData.linkedin_feed_update === 'true') {
-                    currentAdapter.hidePost(post);
+                    currentAdapter.hidePost(post, 'Feed Update');
                     const site = postData.site || 'unknown';
                     siteCounts[site] = (siteCounts[site] || 0) + 1;
                     filteredCount++;
                     return;
                 }
-                currentAdapter.showPost(post);
             }
         });
 
+        logger.log(`[applyFilters] Summary: ${filteredCount} hidden, ${highlightCount} highlighted`);
         if (filteredCount > 0) {
-            logger.log(`Filtered ${filteredCount} posts`);
             Storage.updateStats(siteCounts);
         }
     };
@@ -549,7 +702,42 @@
         posts.forEach(post => {
             currentAdapter.showPost(post);
         });
+
+        // Also remove all placeholders
+        const placeholders = document.querySelectorAll('.cf-placeholder');
+        placeholders.forEach(placeholder => placeholder.remove());
     };
+
+    const handleReorder = () => {
+        if (!currentAdapter) return;
+
+        const highlightedPosts = Array.from(document.querySelectorAll('.cf-highlight'));
+        if (highlightedPosts.length === 0) {
+            logger.log('[Reorder] No "Highlight" posts found to reorder');
+            return;
+        }
+
+        const feedContainer = currentAdapter.getFeedContainer();
+        if (!feedContainer) {
+            logger.warn('[Reorder] Feed container not found');
+            return;
+        }
+
+        logger.log(`[Reorder] Moving ${highlightedPosts.length} posts to top of feed`);
+
+        for (let i = highlightedPosts.length - 1; i >= 0; i--) {
+            const post = highlightedPosts[i];
+            feedContainer.prepend(post);
+        }
+    };
+
+    // Listen for messages from popup
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === 'reorder_highlighted') {
+            handleReorder();
+            sendResponse({ status: 'done' });
+        }
+    });
 
     // Start the extension logic
     init().catch(err => logger.error('Initialization failed', err));

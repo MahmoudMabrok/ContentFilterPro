@@ -137,7 +137,7 @@ describe('Compound Rules and LinkedIn Job Title', () => {
             const postData = {
                 site: 'linkedin',
                 author: 'Ahmed',
-                linkedin_job_title: 'HR Specialist'
+                linkedin_job_title: '​Transforming Child Healthcare through Media & Medicine | Pediatric Consultant | 15 Years in ER | 1M+ YouTube Subscribers | Future Talk Show Host​Transforming Child Healthcare through Media & Medicine | Pediatric Consultant | 15 Years in ER | 1M+ YouTube Subscribers | Future Talk Show Host'
             };
             const result = RuleEngine.evaluate(rules, postData);
             expect(result).not.toBeNull();

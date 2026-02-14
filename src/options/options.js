@@ -116,7 +116,7 @@
             </td>
             <td>${rule.name}</td>
             <td><span class="badge">${rule.site === '*' ? 'All' : rule.site}</span></td>
-            <td>${rule.action || 'hide'}</td>
+            <td>${(rule.action === 'see_first' || rule.action === 'highlight') ? 'Highlight' : (rule.action || 'hide')}</td>
             <td>
               <button class="btn btn-secondary btn-sm edit-rule" data-id="${rule.id}">Edit</button>
               <button class="btn btn-secondary btn-sm share-rule" data-id="${rule.id}">Share</button>
@@ -136,7 +136,7 @@
                 document.getElementById('rule-id').value = rule.id;
                 document.getElementById('rule-name').value = rule.name;
                 document.getElementById('rule-site').value = rule.site;
-                document.getElementById('rule-action').value = rule.action || 'hide';
+                document.getElementById('rule-action').value = (rule.action === 'see_first' ? 'highlight' : (rule.action || 'hide'));
                 document.getElementById('rule-logic').value = rule.conditionLogic || 'AND';
 
                 conditionsList.innerHTML = '';
@@ -236,8 +236,13 @@
         <select class="cond-operator">
           <option value="equals" ${cond.operator === 'equals' ? 'selected' : ''}>Equals</option>
           <option value="contains" ${cond.operator === 'contains' ? 'selected' : ''}>Contains</option>
+          <option value="contains_exactly" ${cond.operator === 'contains_exactly' ? 'selected' : ''}>Contains (Exact Case)</option>
           <option value="starts_with" ${cond.operator === 'starts_with' ? 'selected' : ''}>Starts With</option>
+          <option value="starts_with_exactly" ${cond.operator === 'starts_with_exactly' ? 'selected' : ''}>Starts With (Exact Case)</option>
           <option value="ends_with" ${cond.operator === 'ends_with' ? 'selected' : ''}>Ends With</option>
+          <option value="ends_with_exactly" ${cond.operator === 'ends_with_exactly' ? 'selected' : ''}>Ends With (Exact Case)</option>
+          <option value="not_equal" ${cond.operator === 'not_equal' ? 'selected' : ''}>Not Equals</option>
+          <option value="not_contains" ${cond.operator === 'not_contains' ? 'selected' : ''}>Not Contains</option>
           <option value="matches" ${cond.operator === 'matches' ? 'selected' : ''}>Regex</option>
         </select>
         <input type="text" class="cond-value" value="${cond.value}" placeholder="Value" list="rules-datalist" required>
@@ -393,7 +398,7 @@
             const settings = await Storage.getSettings();
             const stats = await Storage.getStats();
             const backup = {
-                version: '1.1.0',
+                version: '1.2.1',
                 timestamp: new Date().toISOString(),
                 [STORAGE_KEYS.RULES]: rules,
                 [STORAGE_KEYS.SETTINGS]: settings,

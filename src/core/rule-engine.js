@@ -11,23 +11,38 @@ export const RuleEngine = {
      * @returns {Object|null} - The first matching rule or null.
      */
     evaluate(rules, postData) {
-        if (!rules || !Array.isArray(rules)) return null;
+        if (!rules || !Array.isArray(rules)) {
+            console.log('[RuleEngine] No rules provided or invalid rules array');
+            return null;
+        }
+
+        console.log(`[RuleEngine] Evaluating ${rules.length} rules against post by "${postData.author || 'unknown'}"`);
 
         for (const rule of rules) {
-            if (!rule.enabled) continue;
+            if (!rule.enabled) {
+                console.log(`[RuleEngine] Rule "${rule.name}" (${rule.id}) is disabled, skipping`);
+                continue;
+            }
 
             // Check if rule applies to this site
-            if (rule.site !== '*' && rule.site !== postData.site) continue;
+            if (rule.site !== '*' && rule.site !== postData.site) {
+                console.log(`[RuleEngine] Rule "${rule.name}" (${rule.id}) site "${rule.site}" doesn't match post site "${postData.site}", skipping`);
+                continue;
+            }
 
             // Track current rule to avoid circular dependencies
             const evaluationData = { ...postData, currentRuleId: rule.id };
             const matches = this.evaluateConditions(rule.conditions, evaluationData, rule.conditionLogic || 'AND', rules);
 
             if (matches) {
+                console.log(`[RuleEngine] ✅ Rule "${rule.name}" (${rule.id}) MATCHED — action: ${rule.action || 'hide'}`);
                 return rule;
+            } else {
+                console.log(`[RuleEngine] Rule "${rule.name}" (${rule.id}) did not match`);
             }
         }
 
+        console.log('[RuleEngine] No rules matched for this post');
         return null;
     },
 
@@ -67,7 +82,12 @@ export const RuleEngine = {
 
         const postValue = postData[type];
 
-        if (postValue === undefined || postValue === null) return false;
+        // Skip validation if the field is empty (null, undefined, or empty string)
+        if (postValue === undefined || postValue === null || postValue === '') {
+            // Only log if we have a logging mechanism, otherwise silently skip
+            // Console logging might be too verbose here for the core engine if called frequently
+            return false;
+        }
 
         const matcher = Matchers[operator];
         if (!matcher) return false;

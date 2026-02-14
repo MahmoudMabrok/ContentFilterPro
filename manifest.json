@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Content Filter Pro",
-    "version": "1.1.2",
+    "version": "1.2.1",
     "author": "Mahmoud Mabrok Maghrabia",
     "description": "Extensible content filtering for LinkedIn, Facebook, Reddit, and more.",
     "permissions": [
