@@ -188,11 +188,13 @@
             throw new Error('extractPostData not implemented');
         }
 
-        hidePost(el, ruleName = 'Content Filter') {
+        hidePost(el, ruleName = 'Content Filter', highlightRuleName = null) {
             // Check if placeholder already exists
             const existingPlaceholder = el.previousElementSibling;
             if (existingPlaceholder && existingPlaceholder.classList.contains('cf-placeholder')) {
-                return; // Already has placeholder
+                // TODO: Update existing placeholder text if rule changed?
+                // For now, simple return
+                return;
             }
 
             // Create placeholder element
@@ -201,7 +203,15 @@
             placeholder.setAttribute('data-cf-placeholder', 'true');
             placeholder.setAttribute('data-cf-original-id', el.getAttribute('data-id') || generateId());
 
+            // If also highlighted, add the banner to the placeholder
+            let bannerHtml = '';
+            if (highlightRuleName) {
+                bannerHtml = `<div class="cf-highlight-banner"><span class="cf-highlight-banner-text">Highlight</span><span class="cf-highlight-banner-rule">• ${this.escapeHtml(highlightRuleName)}</span></div>`;
+                placeholder.classList.add('cf-highlight'); // Optionally add highlight style to placeholder itself
+            }
+
             placeholder.innerHTML = `
+                ${bannerHtml}
                 <div class="cf-placeholder-content">
                     <div class="cf-placeholder-info">
                         <div class="cf-placeholder-title">Content Filtered</div>
@@ -221,11 +231,11 @@
             // Add click event to reveal button
             const revealButton = placeholder.querySelector('.cf-reveal-button');
             revealButton.addEventListener('click', () => {
-                this.revealPost(el, placeholder);
+                this.revealPost(el, placeholder, highlightRuleName);
             });
         }
 
-        revealPost(el, placeholder) {
+        revealPost(el, placeholder, highlightRuleName = null) {
             // Remove placeholder
             if (placeholder && placeholder.parentElement) {
                 placeholder.remove();
@@ -235,6 +245,11 @@
             el.classList.remove('cf-collapsed');
             el.setAttribute('data-cf-filtered', 'false');
             el.setAttribute('data-cf-revealed', 'true'); // Mark as revealed to prevent re-filtering
+
+            // If it was highlighted, ensure the banner is applied to the post now
+            if (highlightRuleName) {
+                this.highlightPost(el, highlightRuleName);
+            }
         }
 
         showPost(el) {
@@ -267,13 +282,27 @@
                 return;
             }
 
-            if (el.getAttribute('data-cf-filtered') === 'true') {
-                logger.log('[Highlight] Post already filtered, skipping');
+            // If filtered (hidden), we shouldn't be here typically unless revealed, 
+            // OR if processPost called us. If processPost called us, it means NOT hidden.
+            if (el.getAttribute('data-cf-filtered') === 'true' && !el.getAttribute('data-cf-revealed')) {
+                logger.log('[Highlight] Post is hidden, skipping direct highlight (should be on placeholder)');
                 return;
             }
 
-            if (el.getAttribute('data-cf-highlight') === 'true') {
-                logger.log('[Highlight] Post already marked as highlight, skipping');
+            // STRICT CHECK: Remove all existing banners to ensure no duplicates
+            const existingBanners = el.querySelectorAll('.cf-highlight-banner');
+            if (existingBanners.length > 0) {
+                // Keep the first one, remove others if any
+                for (let i = 1; i < existingBanners.length; i++) {
+                    existingBanners[i].remove();
+                }
+
+                // Update the first one
+                const firstBanner = existingBanners[0];
+                const ruleSpan = firstBanner.querySelector('.cf-highlight-banner-rule');
+                if (ruleSpan) {
+                    ruleSpan.textContent = `• ${this.escapeHtml(ruleName)}`;
+                }
                 return;
             }
 
@@ -285,17 +314,15 @@
                 return;
             }
 
-            // Add banner if not already present
-            if (!el.querySelector('.cf-highlight-banner')) {
-                const banner = document.createElement('div');
-                banner.className = 'cf-highlight-banner';
-                banner.innerHTML = `<span class="cf-highlight-banner-text">Highlight</span><span class="cf-highlight-banner-rule">• ${this.escapeHtml(ruleName)}</span>`;
-                // Insert at top, pushing content down
-                el.insertBefore(banner, el.firstChild);
-                logger.log('[Highlight] Added Highlight banner with rule:', ruleName);
-            }
+            // Add banner
+            const banner = document.createElement('div');
+            banner.className = 'cf-highlight-banner';
+            banner.innerHTML = `<span class="cf-highlight-banner-text">Highlight</span><span class="cf-highlight-banner-rule">• ${this.escapeHtml(ruleName)}</span>`;
+            // Insert at top, pushing content down
+            el.insertBefore(banner, el.firstChild);
+            logger.log('[Highlight] Added Highlight banner with rule:', ruleName);
 
-            el.setAttribute('data-cf-filtered', 'true');
+            el.setAttribute('data-cf-filtered', 'true'); // Consolidate "processed" state
             el.setAttribute('data-cf-highlight', 'true');
             el.classList.add('cf-highlight');
 
