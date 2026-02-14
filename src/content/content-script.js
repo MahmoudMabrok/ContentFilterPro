@@ -76,7 +76,9 @@
         MATCHES: 'matches',
         CONTAINS_EXACTLY: 'contains_exactly',
         STARTS_WITH_EXACTLY: 'starts_with_exactly',
-        ENDS_WITH_EXACTLY: 'ends_with_exactly'
+        ENDS_WITH_EXACTLY: 'ends_with_exactly',
+        NOT_EQUAL: 'not_equal',
+        NOT_CONTAINS: 'not_contains'
     };
 
     const Matchers = {
@@ -94,7 +96,9 @@
         },
         [Operators.CONTAINS_EXACTLY]: (val, target) => val.includes(target),
         [Operators.STARTS_WITH_EXACTLY]: (val, target) => val.startsWith(target),
-        [Operators.ENDS_WITH_EXACTLY]: (val, target) => val.endsWith(target)
+        [Operators.ENDS_WITH_EXACTLY]: (val, target) => val.endsWith(target),
+        [Operators.NOT_EQUAL]: (val, target) => val.toLowerCase() !== target.toLowerCase(),
+        [Operators.NOT_CONTAINS]: (val, target) => !val.toLowerCase().includes(target.toLowerCase())
     };
 
     // ============================================================================
@@ -250,68 +254,57 @@
             return div.innerHTML;
         }
 
-        highlightPost(el, ruleName = 'See First') {
-            this.seeFirst(el, ruleName);
+        highlightPost(el, ruleName = 'Highlight') {
+            this.highlight(el, ruleName);
         }
 
-        seeFirst(el, ruleName = 'See First') {
-            logger.log('[SeeFirst] Starting seeFirst evaluation...');
-            logger.log('[SeeFirst] Element:', el?.tagName, el?.className?.substring(0, 50));
+        highlight(el, ruleName = 'Highlight') {
+            logger.log('[Highlight] Starting highlight evaluation...');
+            logger.log('[Highlight] Element:', el?.tagName, el?.className?.substring(0, 50));
 
             if (!el) {
-                logger.warn('[SeeFirst] Element is null or undefined, skipping');
+                logger.warn('[Highlight] Element is null or undefined, skipping');
                 return;
             }
 
             if (el.getAttribute('data-cf-filtered') === 'true') {
-                logger.log('[SeeFirst] Post already filtered, skipping');
+                logger.log('[Highlight] Post already filtered, skipping');
                 return;
             }
 
-            if (el.getAttribute('data-cf-see-first') === 'true') {
-                logger.log('[SeeFirst] Post already marked as see-first, skipping');
+            if (el.getAttribute('data-cf-highlight') === 'true') {
+                logger.log('[Highlight] Post already marked as highlight, skipping');
                 return;
             }
 
             const parent = el.parentElement;
-            logger.log('[SeeFirst] Parent element:', parent?.tagName, parent?.className?.substring(0, 50));
+            logger.log('[Highlight] Parent element:', parent?.tagName, parent?.className?.substring(0, 50));
 
             if (!parent) {
-                logger.warn('[SeeFirst] No parent element found, cannot move post');
+                logger.warn('[Highlight] No parent element found, cannot move post');
                 return;
             }
 
-            // Check if already at the top
-            const isFirstChild = parent.firstChild === el ||
-                (parent.firstElementChild === el);
-            logger.log('[SeeFirst] Is already first child:', isFirstChild);
-
-            if (!isFirstChild) {
-                logger.log('[SeeFirst] Moving post to top of feed');
-                logger.log('[SeeFirst] Current position: child index', Array.from(parent.children).indexOf(el));
-
-                // Move to top
-                parent.prepend(el);
-
-                logger.log('[SeeFirst] Post moved successfully to position 0');
-            } else {
-                logger.log('[SeeFirst] Post is already at top, just applying styling');
+            // Ensure parent relative positioning for banner placement if needed
+            // But usually we want the POST itself to be relative so the absolute banner is inside it
+            if (getComputedStyle(el).position === 'static') {
+                el.style.position = 'relative';
             }
 
             // Add banner if not already present
-            if (!el.querySelector('.cf-see-first-banner')) {
+            if (!el.querySelector('.cf-highlight-banner')) {
                 const banner = document.createElement('div');
-                banner.className = 'cf-see-first-banner';
-                banner.innerHTML = `See First <span class="cf-see-first-banner-rule">• ${this.escapeHtml(ruleName)}</span>`;
-                el.insertBefore(banner, el.firstChild);
-                logger.log('[SeeFirst] Added See First banner with rule:', ruleName);
+                banner.className = 'cf-highlight-banner';
+                banner.innerHTML = `<span class="cf-highlight-banner-text">Highlight</span><span class="cf-highlight-banner-rule">• ${this.escapeHtml(ruleName)}</span>`;
+                el.appendChild(banner); // Append instead of insertBefore to sit on top of everything
+                logger.log('[Highlight] Added Highlight banner with rule:', ruleName);
             }
 
             el.setAttribute('data-cf-filtered', 'true');
-            el.setAttribute('data-cf-see-first', 'true');
-            el.classList.add('cf-see-first');
+            el.setAttribute('data-cf-highlight', 'true');
+            el.classList.add('cf-highlight');
 
-            logger.log('[SeeFirst] Completed processing for post');
+            logger.log('[Highlight] Completed processing for post');
         }
 
         observeFeed(callback) {
@@ -648,13 +641,13 @@
 
         const posts = document.querySelectorAll(currentAdapter.getPostSelector());
         let filteredCount = 0;
-        let seeFirstCount = 0;
+        let highlightCount = 0;
         const siteCounts = {};
 
         logger.log(`[applyFilters] Processing ${posts.length} posts with ${rules.length} rules`);
 
         posts.forEach(post => {
-            // Skip if already successfully filtered (hidden or see-first) or revealed by user
+            // Skip if already successfully filtered (hidden or highlighted) or revealed by user
             if (post.getAttribute('data-cf-filtered') === 'true' || post.hasAttribute('data-cf-revealed')) {
                 logger.log('[applyFilters] Skipping already-processed post (data-cf-filtered="true" or revealed)');
                 return;
@@ -673,9 +666,9 @@
                 logger.log(`[applyFilters] Match: "${matchingRule.name}" on "${identifier}" (Action: ${matchingRule.action || 'hide'})`);
 
                 if (matchingRule.action === 'see_first' || matchingRule.action === 'highlight') {
-                    logger.log(`[applyFilters] Applying SEE FIRST for post by "${identifier}"`);
-                    currentAdapter.seeFirst(post, matchingRule.name);
-                    seeFirstCount++;
+                    logger.log(`[applyFilters] Applying HIGHLIGHT for post by "${identifier}"`);
+                    currentAdapter.highlight(post, matchingRule.name);
+                    highlightCount++;
                 } else {
                     logger.log(`[applyFilters] Applying HIDE for post by "${identifier}"`);
                     currentAdapter.hidePost(post, matchingRule.name);
@@ -702,7 +695,7 @@
             }
         });
 
-        logger.log(`[applyFilters] Summary: ${filteredCount} hidden, ${seeFirstCount} see-first`);
+        logger.log(`[applyFilters] Summary: ${filteredCount} hidden, ${highlightCount} highlighted`);
         if (filteredCount > 0) {
             Storage.updateStats(siteCounts);
         }
@@ -719,6 +712,37 @@
         const placeholders = document.querySelectorAll('.cf-placeholder');
         placeholders.forEach(placeholder => placeholder.remove());
     };
+
+    const handleReorder = () => {
+        if (!currentAdapter) return;
+
+        const highlightedPosts = Array.from(document.querySelectorAll('.cf-highlight'));
+        if (highlightedPosts.length === 0) {
+            logger.log('[Reorder] No "Highlight" posts found to reorder');
+            return;
+        }
+
+        const feedContainer = currentAdapter.getFeedContainer();
+        if (!feedContainer) {
+            logger.warn('[Reorder] Feed container not found');
+            return;
+        }
+
+        logger.log(`[Reorder] Moving ${highlightedPosts.length} posts to top of feed`);
+
+        for (let i = highlightedPosts.length - 1; i >= 0; i--) {
+            const post = highlightedPosts[i];
+            feedContainer.prepend(post);
+        }
+    };
+
+    // Listen for messages from popup
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === 'reorder_highlighted') {
+            handleReorder();
+            sendResponse({ status: 'done' });
+        }
+    });
 
     // Start the extension logic
     init().catch(err => logger.error('Initialization failed', err));

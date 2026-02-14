@@ -24,7 +24,9 @@ export const Operators = {
     IN_LIST: 'in_list',
     CONTAINS_EXACTLY: 'contains_exactly',
     STARTS_WITH_EXACTLY: 'starts_with_exactly',
-    ENDS_WITH_EXACTLY: 'ends_with_exactly'
+    ENDS_WITH_EXACTLY: 'ends_with_exactly',
+    NOT_EQUAL: 'not_equal',
+    NOT_CONTAINS: 'not_contains'
 };
 
 export const Matchers = {
@@ -46,5 +48,7 @@ export const Matchers = {
     },
     [Operators.CONTAINS_EXACTLY]: (val, target) => val.includes(target),
     [Operators.STARTS_WITH_EXACTLY]: (val, target) => val.startsWith(target),
-    [Operators.ENDS_WITH_EXACTLY]: (val, target) => val.endsWith(target)
+    [Operators.ENDS_WITH_EXACTLY]: (val, target) => val.endsWith(target),
+    [Operators.NOT_EQUAL]: (val, target) => val.toLowerCase() !== target.toLowerCase(),
+    [Operators.NOT_CONTAINS]: (val, target) => !val.toLowerCase().includes(target.toLowerCase())
 };
