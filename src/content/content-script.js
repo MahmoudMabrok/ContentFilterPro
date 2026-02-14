@@ -285,18 +285,13 @@
                 return;
             }
 
-            // Ensure parent relative positioning for banner placement if needed
-            // But usually we want the POST itself to be relative so the absolute banner is inside it
-            if (getComputedStyle(el).position === 'static') {
-                el.style.position = 'relative';
-            }
-
             // Add banner if not already present
             if (!el.querySelector('.cf-highlight-banner')) {
                 const banner = document.createElement('div');
                 banner.className = 'cf-highlight-banner';
                 banner.innerHTML = `<span class="cf-highlight-banner-text">Highlight</span><span class="cf-highlight-banner-rule">• ${this.escapeHtml(ruleName)}</span>`;
-                el.appendChild(banner); // Append instead of insertBefore to sit on top of everything
+                // Insert at top, pushing content down
+                el.insertBefore(banner, el.firstChild);
                 logger.log('[Highlight] Added Highlight banner with rule:', ruleName);
             }
 
