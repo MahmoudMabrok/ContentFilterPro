@@ -76,6 +76,22 @@
         openOptionsBtn.addEventListener('click', () => {
             chrome.runtime.openOptionsPage();
         });
+
+        if (document.getElementById('reorder-btn')) {
+            document.getElementById('reorder-btn').addEventListener('click', async () => {
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tab) {
+                    chrome.tabs.sendMessage(tab.id, { action: 'reorder_highlighted' });
+                    // Optional: Show feedback
+                    const btn = document.getElementById('reorder-btn');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<span class="icon">✅</span> Done!';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                    }, 1500);
+                }
+            });
+        }
     });
 
 })();
